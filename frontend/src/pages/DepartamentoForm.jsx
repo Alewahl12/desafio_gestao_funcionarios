@@ -1,48 +1,78 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import styles from './Departamento.module.css';
 
 function DepartamentoForm() {
   const [codigo, setCodigo] = useState('');
   const [descricao, setDescricao] = useState('');
+  
+  const navigate = useNavigate();
+  const { id } = useParams(); // Deteta se há um ID na rota (Edição)
+
+  useEffect(() => {
+    if (id) {
+      // Se existe ID, busca os dados no Backend para preencher os campos
+      api.get(`/departamentos/${id}`)
+        .then(response => {
+          setCodigo(response.data.codigo);
+          setDescricao(response.data.descricao);
+        })
+        .catch(error => console.error("Erro ao buscar departamento:", error));
+    }
+  }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Fazendo a requisição POST para o seu backend Java
-      await api.post('/departamentos', { codigo, descricao });
-      
-      alert('Departamento cadastrado com sucesso!');
-      
-      // Limpa os campos após salvar
-      setCodigo('');
-      setDescricao('');
-      
-      // Recarrega a página para atualizar a lista (solução simples para o momento)
-      window.location.reload(); 
+      if (id) {
+        // Se tem ID, atualiza (PUT)
+        await api.put(`/departamentos/${id}`, { codigo, descricao });
+        alert('Departamento atualizado com sucesso!');
+      } else {
+        // Se não tem, cria um novo (POST)
+        await api.post('/departamentos', { codigo, descricao });
+        alert('Departamento cadastrado com sucesso!');
+      }
+      navigate('/departamentos'); // Volta para a tabela
     } catch (error) {
-      console.error("Erro ao salvar departamento:", error);
-      alert('Erro ao cadastrar. Verifique o console.');
+      console.error("Erro ao guardar:", error);
+      alert('Erro ao guardar os dados do departamento.');
     }
   };
 
   return (
-    <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
-      <h2>Novo Departamento</h2>
-      <form onSubmit={handleSubmit}>
-        <input 
-          placeholder="Código (Ex: TI)" 
-          value={codigo} 
-          onChange={(e) => setCodigo(e.target.value)} 
-          required 
-        />
-        <input 
-          placeholder="Descrição" 
-          value={descricao} 
-          onChange={(e) => setDescricao(e.target.value)} 
-          required 
-        />
-        <button type="submit">Cadastrar</button>
-      </form>
+    <div className={styles.pageContainer}>
+      <div className={styles.pageHeader}>
+        <h1>{id ? 'Editar Departamento' : 'Novo Departamento'}</h1>
+      </div>
+      
+      <div className={styles.formContainer}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <input 
+            className={styles.inputField}
+            placeholder="Código (Ex: TI)" 
+            value={codigo} 
+            onChange={(e) => setCodigo(e.target.value)} 
+            required 
+          />
+          <input 
+            className={styles.inputField}
+            placeholder="Descrição" 
+            value={descricao} 
+            onChange={(e) => setDescricao(e.target.value)} 
+            required 
+          />
+          <div className={styles.formActions}>
+            <button type="button" className={styles.btnOutline} onClick={() => navigate('/departamentos')}>
+              Cancelar
+            </button>
+            <button type="submit" className={styles.btnPrimary}>
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -35,4 +35,34 @@ public class DepartamentoController {
     public List<Departamento> listar() {
         return repository.findAll();
     }
+
+    // Rota para BUSCAR um departamento por ID (Preenche os dados na tela de edição)
+    @GetMapping("/{id}")
+    public ResponseEntity<Departamento> buscarPorId(@PathVariable Long id) {
+        return repository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Rota para ATUALIZAR um departamento existente
+    @PutMapping("/{id}")
+    public ResponseEntity<?> atualizar(@PathVariable Long id, @RequestBody Departamento atualizado) {
+        return repository.findById(id)
+                .map(departamento -> {
+                    // Se o usuário tentar mudar para um código que já existe em outro departamento, bloqueia
+                    if (!departamento.getCodigo().equals(atualizado.getCodigo()) && 
+                        repository.existsByCodigo(atualizado.getCodigo())) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("Erro: O código informado já existe em outro departamento.");
+                    }
+                    
+                    // Atualiza os dados e salva
+                    departamento.setCodigo(atualizado.getCodigo());
+                    departamento.setDescricao(atualizado.getDescricao());
+                    Departamento salvo = repository.save(departamento);
+                    
+                    return ResponseEntity.ok(salvo);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }
