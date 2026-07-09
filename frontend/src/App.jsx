@@ -4,6 +4,9 @@ import DepartamentoList from './pages/DepartamentoList';
 import DepartamentoForm from './pages/DepartamentoForm';
 import CargoList from './pages/CargoList';
 import CargoForm from './pages/CargoForm';
+import FuncionarioList from './pages/FuncionarioList';
+// Nova importação:
+import FuncionarioForm from './pages/FuncionarioForm';
 
 function App() {
   return (
@@ -11,13 +14,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           
-          {/* 👇 AGORA A PÁGINA INICIAL DA APLICAÇÃO É A DE FUNCIONÁRIOS 👇 */}
-          <Route path="/" element={
-            <div>
-              <h2 style={{ color: '#1e293b', marginBottom: '20px' }}>Funcionários</h2>
-              <p>Módulo de Funcionários (Em construção... Pronto para ser o próximo passo!)</p>
-            </div>
-          } />
+          {/* Rotas de Funcionário */}
+          <Route path="/" element={<FuncionarioList />} />
+          <Route path="funcionarios" element={<FuncionarioList />} />
+          <Route path="funcionarios/novo" element={<FuncionarioForm />} />
+          <Route path="funcionarios/editar/:id" element={<FuncionarioForm />} />
           
           {/* Rotas de Departamento */}
           <Route path="departamentos" element={<DepartamentoList />} />
