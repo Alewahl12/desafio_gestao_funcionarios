@@ -33,4 +33,33 @@ public class CargoController {
     public List<Cargo> listar() {
         return repository.findAll();
     }
+
+    // Rota para BUSCAR um cargo por ID (Preenche os dados na tela de edição)
+    @GetMapping("/{id}")
+    public ResponseEntity<Cargo> buscarPorId(@PathVariable Long id) {
+        return repository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // Rota para ATUALIZAR um cargo existente
+    @PutMapping("/{id}")
+    public ResponseEntity<?> atualizar(@PathVariable Long id, @RequestBody Cargo atualizado) {
+        return repository.findById(id)
+                .map(cargo -> {
+                    // Validação: não permite mudar para um código que já existe
+                    if (!cargo.getCodigo().equals(atualizado.getCodigo()) && 
+                        repository.existsByCodigo(atualizado.getCodigo())) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("Erro: O código informado já existe em outro cargo.");
+                    }
+                    
+                    cargo.setCodigo(atualizado.getCodigo());
+                    cargo.setDescricao(atualizado.getDescricao());
+                    Cargo salvo = repository.save(cargo);
+                    
+                    return ResponseEntity.ok(salvo);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }
