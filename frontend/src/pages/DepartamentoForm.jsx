@@ -37,7 +37,7 @@ function DepartamentoForm() {
       navigate('/departamentos'); // Volta para a tabela
     } catch (error) {
       console.error("Erro ao guardar:", error);
-      alert('Erro ao guardar os dados do departamento.');
+      alert('Erro ao guardar os dados do departamento. Verifique se o código já existe.');
     }
   };
 
