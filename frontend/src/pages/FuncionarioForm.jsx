@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import styles from './Departamento.module.css';
+import { cpf as validadorCpf } from 'cpf-cnpj-validator'; // Renomeado para não conflitar com a variável de estado 'cpf'
 
 function FuncionarioForm() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ function FuncionarioForm() {
 
   // Estados para controlar o Modal de Vínculo
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [indexEdicaoVinculo, setIndexEdicaoVinculo] = useState(null); // null = novo, número = editando existente na lista local
+  const [indexEdicaoVinculo, setIndexEdicaoVinculo] = useState(null);
 
   // Estados do formulário de Vínculo (dentro do modal)
   const [empresa, setEmpresa] = useState('');
@@ -26,7 +27,6 @@ function FuncionarioForm() {
   const [cargosDisponiveis, setCargosDisponiveis] = useState([]);
   const [departamentosDisponiveis, setDepartamentosDisponiveis] = useState([]);
 
-  // Carregar dados de Cargo e Departamento ao abrir a tela para usar no select do modal
   useEffect(() => {
     carregarAuxiliares();
     if (id) {
@@ -58,7 +58,6 @@ function FuncionarioForm() {
     }
   };
 
-  // Abre o modal para criar um novo vínculo
   const handleAbrirNovoVinculo = () => {
     setIndexEdicaoVinculo(null);
     setEmpresa('');
@@ -68,19 +67,16 @@ function FuncionarioForm() {
     setIsModalOpen(true);
   };
 
-  // Abre o modal para editar um vínculo local que já está na tabela
   const handleAbrirEditarVinculo = (index) => {
     const v = vinculos[index];
     setIndexEdicaoVinculo(index);
     setEmpresa(v.empresa);
     setMatricula(v.matricula);
-    // Armazena apenas o ID para o select
     setCargoSelecionado(v.cargo?.id || '');
     setDepartamentoSelecionado(v.departamento?.id || '');
     setIsModalOpen(true);
   };
 
-  // Salva o vínculo no estado local (não envia para o backend ainda)
   const handleSalvarVinculoLocal = (e) => {
     e.preventDefault();
 
@@ -95,16 +91,14 @@ function FuncionarioForm() {
     };
 
     if (indexEdicaoVinculo !== null) {
-      // Editando um vínculo existente na lista local
       const novosVinculos = [...vinculos];
       novosVinculos[indexEdicaoVinculo] = novoVinculo;
       setVinculos(novosVinculos);
     } else {
-      // Adicionando um novo vínculo na lista local
       setVinculos([...vinculos, novoVinculo]);
     }
 
-    setIsModalOpen(false); // Fecha o modal
+    setIsModalOpen(false);
   };
 
   const handleRemoverVinculoLocal = (index) => {
@@ -112,14 +106,23 @@ function FuncionarioForm() {
     setVinculos(novosVinculos);
   };
 
-  // Salva o Funcionário Completo no Backend (com todos os seus vínculos acoplados)
+  // 👇 FUNÇÃO ATUALIZADA COM A VALIDAÇÃO DO CPF 👇
   const handleSalvarFuncionarioCompleto = async (e) => {
     e.preventDefault();
+    
+    // VERIFICA SE O CPF É VÁLIDO ANTES DE ENVIAR
+    if (!validadorCpf.isValid(cpf)) {
+      alert("Erro: O CPF informado é inválido. Verifique o número e tente novamente.");
+      return; // Interrompe o processo aqui
+    }
+
+    const cpfPadronizado = validadorCpf.format(cpf);
+
     try {
       const dadosParaEnviar = {
         nome,
-        cpf,
-        vinculos // Envia a lista de vínculos dentro do corpo do funcionário
+        cpf: cpfPadronizado,
+        vinculos
       };
 
       if (id) {
@@ -160,7 +163,7 @@ function FuncionarioForm() {
               <label style={{ display: 'block', marginBottom: '8px', color: '#64748b', fontWeight: '600' }}>CPF *</label>
               <input 
                 className={styles.inputField}
-                placeholder="000.000.000-00" 
+                placeholder="Ex: 00000000000 ou 000.000.000-00" 
                 value={cpf} 
                 onChange={(e) => setCpf(e.target.value)} 
                 required 
@@ -226,9 +229,7 @@ function FuncionarioForm() {
         </form>
       </div>
 
-      {/* ==================================== */}
       {/* MODAL SOBREPOSTO (NOVO/EDITAR VÍNCULO) */}
-      {/* ==================================== */}
       {isModalOpen && (
         <div style={{
           position: 'fixed',
