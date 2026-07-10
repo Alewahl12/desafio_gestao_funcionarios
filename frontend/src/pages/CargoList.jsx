@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css'; // Reaproveitando o CSS!
+import styles from './Departamento.module.css'; // Usando o mesmo CSS
+// Importando as bibliotecas geradoras de PDF
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 function CargoList() {
   const [cargos, setCargos] = useState([]);
@@ -33,6 +36,36 @@ function CargoList() {
     setListaFiltrada(filtrados);
   };
 
+  // Função que constrói e baixa o Relatório de Cargos em PDF
+  const gerarRelatorio = () => {
+    const doc = new jsPDF();
+    
+    // Configura os Títulos
+    doc.setFontSize(18);
+    doc.text("Relatório de Cargos", 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
+
+    // Mapeia os dados usando a lista filtrada
+    const colunas = ["Código", "Descrição"];
+    const linhas = listaFiltrada.map(cargo => [cargo.codigo, cargo.descricao]);
+
+    // Desenha a tabela com a nova sintaxe corrigida para o Vite
+    autoTable(doc, {
+      startY: 35,
+      head: [colunas],
+      body: linhas,
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: { fontSize: 10, cellPadding: 5 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    // Dispara o download
+    doc.save("relatorio_cargos.pdf");
+  };
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.pageHeader}>
@@ -56,7 +89,8 @@ function CargoList() {
       </div>
 
       <div className={styles.actionButtons}>
-        <button className={styles.btnOutline} onClick={() => alert("Relatório em breve!")}>
+        {/* 👇 Botão atualizado chamando a função de relatório 👇 */}
+        <button className={styles.btnOutline} onClick={gerarRelatorio}>
           Baixar Relatório
         </button>
         <button className={styles.btnPrimary} onClick={() => navigate('/cargos/novo')}>

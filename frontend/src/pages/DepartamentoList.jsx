@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css'; // Importação do CSS Module
+import styles from './Departamento.module.css';
+// Importando as bibliotecas geradoras de PDF
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 function DepartamentoList() {
   const [departamentos, setDepartamentos] = useState([]);
@@ -33,6 +36,33 @@ function DepartamentoList() {
     setListaFiltrada(filtrados);
   };
 
+// Função que constrói e baixa o Relatório em PDF
+  const gerarRelatorio = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text("Relatório de Departamentos", 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
+
+    const colunas = ["Código", "Descrição"];
+    const linhas = listaFiltrada.map(dep => [dep.codigo, dep.descricao]);
+
+    // 👇 A MÁGICA NOVA ESTÁ AQUI 👇
+    autoTable(doc, {
+      startY: 35,
+      head: [colunas],
+      body: linhas,
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: { fontSize: 10, cellPadding: 5 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save("relatorio_departamentos.pdf");
+  };
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.pageHeader}>
@@ -56,7 +86,8 @@ function DepartamentoList() {
       </div>
 
       <div className={styles.actionButtons}>
-        <button className={styles.btnOutline} onClick={() => alert("Relatório em breve!")}>
+        {/* 👇 Botão atualizado chamando a nova função 👇 */}
+        <button className={styles.btnOutline} onClick={gerarRelatorio}>
           Baixar Relatório
         </button>
         <button className={styles.btnPrimary} onClick={() => navigate('/departamentos/novo')}>
