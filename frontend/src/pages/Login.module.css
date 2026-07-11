@@ -1,0 +1,80 @@
+.page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.card {
+  width: 380px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.logo {
+  font-size: 46px;
+  font-weight: 800;
+  color: var(--color-primary);
+  text-align: center;
+  line-height: 1;
+}
+
+.headerText {
+  text-align: center;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--color-heading);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.errorText {
+  margin: 0;
+  font-size: 13px;
+  color: #dc2626;
+  text-align: center;
+}
+
+.submitBtn {
+  width: 100%;
+  justify-content: center;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.toggleRow {
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.toggleLink {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 4px;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+}

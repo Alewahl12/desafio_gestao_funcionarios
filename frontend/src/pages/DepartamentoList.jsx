@@ -91,7 +91,7 @@ function DepartamentoList() {
             />
           </fieldset>
 
-          <fieldset className={`${styles.fieldBox} ${styles.fieldBoxNarrow}`}>
+          <fieldset className={`${styles.fieldBox} ${styles.fieldBoxCodeSearch}`}>
             <legend className={styles.fieldLegend}>Código</legend>
             <input
               className={styles.fieldInput}

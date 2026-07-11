@@ -208,9 +208,6 @@ function FuncionarioList() {
                 <th className={styles.editCol}>Editar</th>
                 <th>Nome</th>
                 <th>CPF</th>
-                <th>Empresa</th>
-                <th>Cargo</th>
-                <th>Departamento</th>
               </tr>
             </thead>
             <tbody>
@@ -235,14 +232,11 @@ function FuncionarioList() {
                     </td>
                     <td>{func.nome}</td>
                     <td>{func.cpf}</td>
-                    <td>{func.vinculos?.map(v => v.empresa).join(', ') || '-'}</td>
-                    <td>{func.vinculos?.map(v => v.cargo?.descricao).join(', ') || '-'}</td>
-                    <td>{func.vinculos?.map(v => v.departamento?.descricao).join(', ') || '-'}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className={styles.emptyState}>Nenhum funcionário encontrado.</td>
+                  <td colSpan="3" className={styles.emptyState}>Nenhum funcionário encontrado.</td>
                 </tr>
               )}
             </tbody>

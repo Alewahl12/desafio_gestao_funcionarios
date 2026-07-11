@@ -1,5 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { IconUser, IconIdCard, IconBuilding } from './icons';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { IconUser, IconIdCard, IconBuilding, IconLogout } from './icons';
+import { logout } from '../services/auth';
 import styles from './Layout.module.css';
 
 const navItems = [
@@ -9,10 +10,17 @@ const navItems = [
 ];
 
 function Layout() {
+  const navigate = useNavigate();
+
+  const handleSair = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <div className={styles.logo}>A</div>
+        <div className={styles.logo}>X</div>
 
         <nav className={styles.nav}>
           {navItems.map(({ to, label, Icon }) => (
@@ -28,6 +36,13 @@ function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        <div className={styles.spacer} />
+
+        <button type="button" className={styles.logoutItem} onClick={handleSair}>
+          <IconLogout size={22} />
+          <span>Sair</span>
+        </button>
       </aside>
 
       <main className={styles.main}>
