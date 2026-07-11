@@ -1,20 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css'; // Reaproveitando nosso design system
-// 👇 NOVAS IMPORTAÇÕES PARA O PDF 👇
+import styles from './Departamento.module.css';
+import { IconDownload, IconPlus, IconEdit, IconChevronDown } from '../components/icons';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 function FuncionarioList() {
   const [funcionarios, setFuncionarios] = useState([]);
-  const [listaFiltrada, setListaFiltrada] = useState([]);
-  
-  // Estados para os filtros
+
+  // Estados dos filtros
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroCpf, setFiltroCpf] = useState('');
-  const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const [filtroMatricula, setFiltroMatricula] = useState('');
+  const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const [filtroCargo, setFiltroCargo] = useState('');
   const [filtroDepartamento, setFiltroDepartamento] = useState('');
 
@@ -38,7 +37,6 @@ function FuncionarioList() {
         api.get('/departamentos')
       ]);
       setFuncionarios(resFunc.data);
-      setListaFiltrada(resFunc.data);
       setCargosDisponiveis(resCargos.data);
       setDepartamentosDisponiveis(resDeps.data);
     } catch (error) {
@@ -46,52 +44,51 @@ function FuncionarioList() {
     }
   };
 
-  const handlePesquisar = () => {
-    const filtrados = funcionarios.filter(func => {
+  // Filtro instantâneo: reage a cada alteração, sem botão de pesquisa.
+  const listaFiltrada = useMemo(() => {
+    return funcionarios.filter(func => {
       const matchNome = func.nome.toLowerCase().includes(filtroNome.toLowerCase());
       const matchCpf = func.cpf.replace(/[.-]/g, '').includes(filtroCpf.replace(/[.-]/g, ''));
-      
+
       if (!func.vinculos || func.vinculos.length === 0) {
-        return matchNome && matchCpf && !filtroEmpresa && !filtroMatricula && !filtroCargo && !filtroDepartamento;
+        return matchNome && matchCpf && !filtroMatricula && !filtroEmpresa && !filtroCargo && !filtroDepartamento;
       }
 
       const matchVinculos = func.vinculos.some(v => {
-        const matchEmp = filtroEmpresa === '' || v.empresa.toLowerCase().includes(filtroEmpresa.toLowerCase());
         const matchMat = filtroMatricula === '' || v.matricula.includes(filtroMatricula);
+        const matchEmp = filtroEmpresa === '' || v.empresa.toLowerCase().includes(filtroEmpresa.toLowerCase());
         const matchCar = filtroCargo === '' || (v.cargo && String(v.cargo.id) === filtroCargo);
         const matchDep = filtroDepartamento === '' || (v.departamento && String(v.departamento.id) === filtroDepartamento);
-        
-        return matchEmp && matchMat && matchCar && matchDep;
+
+        return matchMat && matchEmp && matchCar && matchDep;
       });
 
       return matchNome && matchCpf && matchVinculos;
     });
-    setListaFiltrada(filtrados);
-  };
+  }, [funcionarios, filtroNome, filtroCpf, filtroMatricula, filtroEmpresa, filtroCargo, filtroDepartamento]);
 
   const handleVisualizarVinculos = (func) => {
     setFuncionarioSelecionado(func);
     setIsModalOpen(true);
   };
 
-  // 👇 FUNÇÃO PARA GERAR O RELATÓRIO PDF COM A SINTAXE CORRETA DO VITE 👇
   const gerarRelatorio = () => {
     const doc = new jsPDF();
-    
+
     doc.setFontSize(18);
     doc.text("Relatório de Funcionários", 14, 22);
-    
+
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
 
     const colunas = ["Nome", "CPF", "Empresa(s)", "Cargo(s)", "Departamento(s)"];
-    
+
     const linhas = listaFiltrada.map(func => {
       const empresas = func.vinculos?.map(v => v.empresa).join(', ') || '-';
       const cargos = func.vinculos?.map(v => v.cargo?.descricao).join(', ') || '-';
       const deps = func.vinculos?.map(v => v.departamento?.descricao).join(', ') || '-';
-      
+
       return [func.nome, func.cpf, empresas, cargos, deps];
     });
 
@@ -99,8 +96,8 @@ function FuncionarioList() {
       startY: 35,
       head: [colunas],
       body: linhas,
-      headStyles: { fillColor: [37, 99, 235] },
-      styles: { fontSize: 9, cellPadding: 4 }, 
+      headStyles: { fillColor: [47, 111, 237] },
+      styles: { fontSize: 9, cellPadding: 4 },
       alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
@@ -109,103 +106,158 @@ function FuncionarioList() {
 
   return (
     <div className={styles.pageContainer}>
-      <div className={styles.pageHeader}>
-        <h1>Funcionários</h1>
+      <div className={styles.pageHeaderRow}>
+        <div>
+          <h1>Funcionários</h1>
+          <p className={styles.pageSubtitle}>Veja os funcionários cadastrados no sistema.</p>
+        </div>
+
+        <div className={styles.headerActions}>
+          <button className={styles.btnOutline} onClick={gerarRelatorio}>
+            <IconDownload /> Baixar Relatório
+          </button>
+          <button className={styles.btnPrimary} onClick={() => navigate('/funcionarios/novo')}>
+            <IconPlus /> Novo Funcionário
+          </button>
+        </div>
       </div>
 
-      <div className={styles.searchBar} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-        <input className={styles.inputField} placeholder="Nome" value={filtroNome} onChange={(e) => setFiltroNome(e.target.value)} />
-        <input className={styles.inputField} placeholder="CPF" value={filtroCpf} onChange={(e) => setFiltroCpf(e.target.value)} />
-        <input className={styles.inputField} placeholder="Empresa" value={filtroEmpresa} onChange={(e) => setFiltroEmpresa(e.target.value)} />
-        <input className={styles.inputField} placeholder="Matrícula" value={filtroMatricula} onChange={(e) => setFiltroMatricula(e.target.value)} />
-        
-        <select className={styles.inputField} value={filtroCargo} onChange={(e) => setFiltroCargo(e.target.value)}>
-          <option value="">Filtrar por Cargo</option>
-          {cargosDisponiveis.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
-        </select>
-        
-        <select className={styles.inputField} value={filtroDepartamento} onChange={(e) => setFiltroDepartamento(e.target.value)}>
-          <option value="">Filtrar por Departamento</option>
-          {departamentosDisponiveis.map(d => <option key={d.id} value={d.id}>{d.descricao}</option>)}
-        </select>
-        
-        <button className={styles.btnSearch} style={{ gridColumn: 'span 3', justifySelf: 'end', marginTop: '5px' }} onClick={handlePesquisar}>
-          Pesquisar com Filtros
-        </button>
-      </div>
+      <div className={styles.card}>
+        <div className={styles.cardSearchRow}>
+          <fieldset className={styles.fieldBox}>
+            <legend className={styles.fieldLegend}>Nome do Funcionário</legend>
+            <input
+              className={styles.fieldInput}
+              placeholder="Procure pelo funcionário"
+              value={filtroNome}
+              onChange={(e) => setFiltroNome(e.target.value)}
+            />
+          </fieldset>
 
-      <div className={styles.actionButtons}>
-        {/* 👇 BOTÃO LIGADO À FUNÇÃO DE PDF 👇 */}
-        <button className={styles.btnOutline} onClick={gerarRelatorio}>
-          Baixar Relatório
-        </button>
-        <button className={styles.btnPrimary} onClick={() => navigate('/funcionarios/novo')}>
-          Novo Funcionário
-        </button>
-      </div>
+          <fieldset className={`${styles.fieldBox} ${styles.fieldBoxTiny}`}>
+            <legend className={styles.fieldLegend}>CPF</legend>
+            <input
+              className={styles.fieldInput}
+              placeholder="000.000.000-00"
+              value={filtroCpf}
+              onChange={(e) => setFiltroCpf(e.target.value)}
+            />
+          </fieldset>
 
-      <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#475569', fontStyle: 'italic', fontWeight: '500' }}>
-        💡 Clique no nome do funcionário para ver os vínculos de empresa do funcionário
-      </p>
+          <fieldset className={`${styles.fieldBox} ${styles.fieldBoxTiny}`}>
+            <legend className={styles.fieldLegend}>Matrícula</legend>
+            <input
+              className={styles.fieldInput}
+              placeholder="0000000000"
+              value={filtroMatricula}
+              onChange={(e) => setFiltroMatricula(e.target.value)}
+            />
+          </fieldset>
 
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>CPF</th>
-            <th>Empresa(s)</th>
-            <th>Cargo(s)</th>
-            <th>Departamento(s)</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {listaFiltrada.length > 0 ? (
-            listaFiltrada.map((func) => (
-              <tr key={func.id}>
-                <td>
-                  <span 
-                    style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}
-                    onClick={() => handleVisualizarVinculos(func)}
-                    title="Clique para ver detalhes e vínculos"
-                  >
-                    {func.nome}
-                  </span>
-                </td>
-                <td>{func.cpf}</td>
-                <td>{func.vinculos?.map(v => v.empresa).join(', ') || '-'}</td>
-                <td>{func.vinculos?.map(v => v.cargo?.descricao).join(', ') || '-'}</td>
-                <td>{func.vinculos?.map(v => v.departamento?.descricao).join(', ') || '-'}</td>
-                <td>
-                  <button className={styles.btnEdit} onClick={() => navigate(`/funcionarios/editar/${func.id}`)}>
-                    Editar
-                  </button>
-                </td>
+          <fieldset className={styles.fieldBox}>
+            <legend className={styles.fieldLegend}>Empresa</legend>
+            <input
+              className={styles.fieldInput}
+              placeholder="Procure pela empresa"
+              value={filtroEmpresa}
+              onChange={(e) => setFiltroEmpresa(e.target.value)}
+            />
+          </fieldset>
+
+          <fieldset className={styles.fieldBox}>
+            <legend className={styles.fieldLegend}>Cargo</legend>
+            <div className={styles.fieldSelectWrap}>
+              <select
+                className={styles.fieldSelect}
+                value={filtroCargo}
+                onChange={(e) => setFiltroCargo(e.target.value)}
+              >
+                <option value="">Selecione Uma Opção</option>
+                {cargosDisponiveis.map(c => (
+                  <option key={c.id} value={c.id}>{c.descricao}</option>
+                ))}
+              </select>
+              <IconChevronDown className={styles.selectChevron} />
+            </div>
+          </fieldset>
+
+          <fieldset className={styles.fieldBox}>
+            <legend className={styles.fieldLegend}>Departamento</legend>
+            <div className={styles.fieldSelectWrap}>
+              <select
+                className={styles.fieldSelect}
+                value={filtroDepartamento}
+                onChange={(e) => setFiltroDepartamento(e.target.value)}
+              >
+                <option value="">Selecione Uma Opção</option>
+                {departamentosDisponiveis.map(d => (
+                  <option key={d.id} value={d.id}>{d.descricao}</option>
+                ))}
+              </select>
+              <IconChevronDown className={styles.selectChevron} />
+            </div>
+          </fieldset>
+        </div>
+
+        <p className={styles.cardHint}>Clique para ver os vínculos de empresa do funcionário</p>
+
+        <div className={styles.tableScroll}>
+          <table className={styles.plainTable}>
+            <thead>
+              <tr>
+                <th className={styles.editCol}>Editar</th>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>Empresa</th>
+                <th>Cargo</th>
+                <th>Departamento</th>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="6" style={{ textAlign: 'center' }}>Nenhum funcionário encontrado.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {listaFiltrada.length > 0 ? (
+                listaFiltrada.map((func) => (
+                  <tr
+                    key={func.id}
+                    className={styles.clickableRow}
+                    onClick={() => handleVisualizarVinculos(func)}
+                  >
+                    <td>
+                      <button
+                        className={styles.btnIconEdit}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/funcionarios/editar/${func.id}`);
+                        }}
+                        title="Editar funcionário"
+                      >
+                        <IconEdit />
+                      </button>
+                    </td>
+                    <td>{func.nome}</td>
+                    <td>{func.cpf}</td>
+                    <td>{func.vinculos?.map(v => v.empresa).join(', ') || '-'}</td>
+                    <td>{func.vinculos?.map(v => v.cargo?.descricao).join(', ') || '-'}</td>
+                    <td>{func.vinculos?.map(v => v.departamento?.descricao).join(', ') || '-'}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className={styles.emptyState}>Nenhum funcionário encontrado.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {isViewModalOpen && funcionarioSelecionado && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-        }}>
-          <div className={styles.formContainer} style={{ width: '650px', background: 'white', padding: '30px', maxWidth: '90vw' }}>
-            <h2 style={{ fontSize: '20px', color: '#1e293b', marginBottom: '5px' }}>Vínculos do Colaborador</h2>
-            <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '15px' }}>
-              <strong>Nome:</strong> {funcionarioSelecionado.nome} | <strong>CPF:</strong> {funcionarioSelecionado.cpf}
-            </p>
-            
-            <table className={styles.dataTable} style={{ marginBottom: '25px', boxShadow: 'none', border: '1px solid #e2e8f0' }}>
+        <div className={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
+          <div className={`${styles.modalCard} ${styles.modalCardWide}`} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Vínculos de Empresa</h2>
+
+            <table className={styles.plainTable}>
               <thead>
-                <tr style={{ background: '#f8fafc' }}>
+                <tr>
                   <th>Empresa</th>
                   <th>Matrícula</th>
                   <th>Cargo</th>
@@ -224,15 +276,19 @@ function FuncionarioList() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: 'center', color: '#64748b' }}>Este funcionário não possui vínculos ativos.</td>
+                    <td colSpan="4" className={styles.emptyState}>Este funcionário não possui vínculos ativos.</td>
                   </tr>
                 )}
               </tbody>
             </table>
 
-            <div className={styles.formActions} style={{ justifyContent: 'flex-end' }}>
-              <button type="button" className={styles.btnPrimary} onClick={() => setIsModalOpen(false)}>
-                Fechar Visualização
+            <div className={styles.modalFooterCenter}>
+              <button
+                type="button"
+                className={`${styles.btnOutline} ${styles.btnWide}`}
+                onClick={() => setIsModalOpen(false)}
+              >
+                Fechar
               </button>
             </div>
           </div>
