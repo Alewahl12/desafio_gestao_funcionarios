@@ -5,6 +5,13 @@ CREATE TABLE departamento (
     descricao VARCHAR(255) NOT NULL
 );
 
+-- Criação da tabela Usuário (login do sistema)
+CREATE TABLE usuario (
+    id SERIAL PRIMARY KEY,
+    login VARCHAR(100) UNIQUE NOT NULL,
+    senha_hash VARCHAR(255) NOT NULL
+);
+
 -- Criação da tabela Cargo
 CREATE TABLE cargo (
     id SERIAL PRIMARY KEY,
