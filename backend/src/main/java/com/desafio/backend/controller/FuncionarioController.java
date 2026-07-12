@@ -3,6 +3,7 @@ package com.desafio.backend.controller;
 import com.desafio.backend.entity.Funcionario;
 import com.desafio.backend.entity.Vinculo;
 import com.desafio.backend.repository.FuncionarioRepository;
+import com.desafio.backend.specification.FuncionarioSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +19,20 @@ public class FuncionarioController {
     @Autowired
     private FuncionarioRepository repository;
 
+    // Todos os parâmetros são opcionais — sem nenhum, retorna tudo (mesmo
+    // comportamento de antes). Nome/CPF filtram o próprio funcionário;
+    // matricula/empresa/cargoId/departamentoId filtram pelos vínculos.
     @GetMapping
-    public List<Funcionario> listar() {
-        return repository.findAll();
+    public List<Funcionario> listar(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String cpf,
+            @RequestParam(required = false) String matricula,
+            @RequestParam(required = false) String empresa,
+            @RequestParam(required = false) Long cargoId,
+            @RequestParam(required = false) Long departamentoId) {
+        return repository.findAll(
+                FuncionarioSpecification.comFiltros(nome, cpf, matricula, empresa, cargoId, departamentoId)
+        );
     }
 
     @GetMapping("/{id}")

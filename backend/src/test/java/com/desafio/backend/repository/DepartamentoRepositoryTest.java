@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
@@ -37,5 +39,30 @@ class DepartamentoRepositoryTest {
         Departamento salvo = repository.save(departamento);
 
         assertThat(salvo.getId()).isNotNull();
+    }
+
+    @Test
+    void findByDescricaoECodigo_deveFiltrarPorCodigoParcialSemDiferenciarCaixa() {
+        Departamento ti = new Departamento();
+        ti.setCodigo("TI");
+        ti.setDescricao("Tecnologia da Informação");
+        repository.save(ti);
+
+        Departamento rh = new Departamento();
+        rh.setCodigo("RH");
+        rh.setDescricao("Recursos Humanos");
+        repository.save(rh);
+
+        List<Departamento> resultado = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase("", "ti");
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).getCodigo()).isEqualTo("TI");
+    }
+
+    @Test
+    void findByDescricaoECodigo_deveRetornarVazio_quandoNadaCorresponde() {
+        List<Departamento> resultado = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase("inexistente", "");
+
+        assertThat(resultado).isEmpty();
     }
 }

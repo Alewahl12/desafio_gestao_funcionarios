@@ -59,10 +59,11 @@ class CargoControllerTest {
     }
 
     @Test
-    void listar_deveRetornarTodosCargos() {
-        when(repository.findAll()).thenReturn(List.of(new Cargo(), new Cargo()));
+    void listar_deveRetornarTodosCargos_quandoFiltrosVazios() {
+        when(repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase("", ""))
+                .thenReturn(List.of(new Cargo(), new Cargo()));
 
-        List<Cargo> resultado = controller.listar();
+        List<Cargo> resultado = controller.listar("", "");
 
         assertThat(resultado).hasSize(2);
     }

@@ -30,10 +30,12 @@ public class DepartamentoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
     }
 
-    // Rota para LISTAR todos os departamentos
+    // Aceita ?descricao=X&codigo=Y opcionais — sem eles, retorna tudo.
     @GetMapping
-    public List<Departamento> listar() {
-        return repository.findAll();
+    public List<Departamento> listar(
+            @RequestParam(required = false, defaultValue = "") String descricao,
+            @RequestParam(required = false, defaultValue = "") String codigo) {
+        return repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(descricao, codigo);
     }
 
     // Rota para BUSCAR um departamento por ID (Preenche os dados na tela de edição)

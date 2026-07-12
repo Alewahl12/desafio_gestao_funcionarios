@@ -29,9 +29,15 @@ public class CargoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
     }
 
+    // Aceita ?descricao=X&codigo=Y opcionais — sem eles, retorna tudo (mesmo
+    // comportamento de antes). O frontend ainda não usa isso; a lógica de
+    // filtro por enquanto continua no cliente e será trocada junto com a
+    // implementação de paginação.
     @GetMapping
-    public List<Cargo> listar() {
-        return repository.findAll();
+    public List<Cargo> listar(
+            @RequestParam(required = false, defaultValue = "") String descricao,
+            @RequestParam(required = false, defaultValue = "") String codigo) {
+        return repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(descricao, codigo);
     }
 
     // Rota para BUSCAR um cargo por ID (Preenche os dados na tela de edição)

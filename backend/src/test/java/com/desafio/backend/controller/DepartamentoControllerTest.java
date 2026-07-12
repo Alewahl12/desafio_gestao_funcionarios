@@ -59,10 +59,11 @@ class DepartamentoControllerTest {
     }
 
     @Test
-    void listar_deveRetornarTodosDepartamentos() {
-        when(repository.findAll()).thenReturn(List.of(new Departamento(), new Departamento()));
+    void listar_deveRetornarTodosDepartamentos_quandoFiltrosVazios() {
+        when(repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase("", ""))
+                .thenReturn(List.of(new Departamento(), new Departamento()));
 
-        List<Departamento> resultado = controller.listar();
+        List<Departamento> resultado = controller.listar("", "");
 
         assertThat(resultado).hasSize(2);
     }
