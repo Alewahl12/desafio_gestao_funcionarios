@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import styles from './shared.module.css'; // Usando o mesmo design system
 import { IconDownload, IconPlus, IconEdit } from '../components/icons';
+import { filtrarPorDescricaoECodigo } from '../utils/filtros';
 // Importando as bibliotecas geradoras de PDF
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -29,10 +30,7 @@ function CargoList() {
 
   // Filtro instantâneo: reage a cada tecla digitada, sem botão de pesquisa.
   const listaFiltrada = useMemo(() => {
-    return cargos.filter(cargo =>
-      cargo.descricao.toLowerCase().includes(filtroDescricao.toLowerCase()) &&
-      cargo.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())
-    );
+    return filtrarPorDescricaoECodigo(cargos, filtroDescricao, filtroCodigo);
   }, [cargos, filtroDescricao, filtroCodigo]);
 
   // Função que constrói e baixa o Relatório de Cargos em PDF
@@ -110,7 +108,7 @@ function CargoList() {
             <thead>
               <tr>
                 <th className={styles.editCol}>Editar</th>
-                <th>Descrição</th>
+                <th>Nome</th>
                 <th>Código</th>
               </tr>
             </thead>

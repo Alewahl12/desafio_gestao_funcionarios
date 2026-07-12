@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import styles from './shared.module.css';
 import { IconDownload, IconPlus, IconEdit } from '../components/icons';
+import { filtrarPorDescricaoECodigo } from '../utils/filtros';
 // Importando as bibliotecas geradoras de PDF
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -29,10 +30,7 @@ function DepartamentoList() {
 
   // Filtro instantâneo: reage a cada tecla digitada, sem botão de pesquisa.
   const listaFiltrada = useMemo(() => {
-    return departamentos.filter(dep =>
-      dep.descricao.toLowerCase().includes(filtroDescricao.toLowerCase()) &&
-      dep.codigo.toLowerCase().includes(filtroCodigo.toLowerCase())
-    );
+    return filtrarPorDescricaoECodigo(departamentos, filtroDescricao, filtroCodigo);
   }, [departamentos, filtroDescricao, filtroCodigo]);
 
   // Função que constrói e baixa o Relatório em PDF

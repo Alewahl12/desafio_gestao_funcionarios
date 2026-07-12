@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import styles from './shared.module.css';
 import { IconDownload, IconPlus, IconEdit, IconChevronDown } from '../components/icons';
+import { filtrarFuncionarios } from '../utils/filtros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -46,24 +47,13 @@ function FuncionarioList() {
 
   // Filtro instantâneo: reage a cada alteração, sem botão de pesquisa.
   const listaFiltrada = useMemo(() => {
-    return funcionarios.filter(func => {
-      const matchNome = func.nome.toLowerCase().includes(filtroNome.toLowerCase());
-      const matchCpf = func.cpf.replace(/[.-]/g, '').includes(filtroCpf.replace(/[.-]/g, ''));
-
-      if (!func.vinculos || func.vinculos.length === 0) {
-        return matchNome && matchCpf && !filtroMatricula && !filtroEmpresa && !filtroCargo && !filtroDepartamento;
-      }
-
-      const matchVinculos = func.vinculos.some(v => {
-        const matchMat = filtroMatricula === '' || v.matricula.includes(filtroMatricula);
-        const matchEmp = filtroEmpresa === '' || v.empresa.toLowerCase().includes(filtroEmpresa.toLowerCase());
-        const matchCar = filtroCargo === '' || (v.cargo && String(v.cargo.id) === filtroCargo);
-        const matchDep = filtroDepartamento === '' || (v.departamento && String(v.departamento.id) === filtroDepartamento);
-
-        return matchMat && matchEmp && matchCar && matchDep;
-      });
-
-      return matchNome && matchCpf && matchVinculos;
+    return filtrarFuncionarios(funcionarios, {
+      filtroNome,
+      filtroCpf,
+      filtroMatricula,
+      filtroEmpresa,
+      filtroCargo,
+      filtroDepartamento,
     });
   }, [funcionarios, filtroNome, filtroCpf, filtroMatricula, filtroEmpresa, filtroCargo, filtroDepartamento]);
 
