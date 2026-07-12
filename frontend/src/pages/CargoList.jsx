@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css'; // Usando o mesmo design system
+import styles from './shared.module.css'; // Usando o mesmo design system
 import { IconDownload, IconPlus, IconEdit } from '../components/icons';
 // Importando as bibliotecas geradoras de PDF
 import jsPDF from 'jspdf';
@@ -110,7 +110,7 @@ function CargoList() {
             <thead>
               <tr>
                 <th className={styles.editCol}>Editar</th>
-                <th>Descrição</th>
+                <th>Nome</th>
                 <th>Código</th>
               </tr>
             </thead>

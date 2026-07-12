@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css';
+import styles from './shared.module.css';
 import { IconDownload, IconPlus, IconEdit, IconChevronDown } from '../components/icons';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css';
+import styles from './shared.module.css';
 import { IconDownload, IconPlus, IconEdit } from '../components/icons';
 // Importando as bibliotecas geradoras de PDF
 import jsPDF from 'jspdf';

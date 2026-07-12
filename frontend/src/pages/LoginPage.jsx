@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import shared from './Departamento.module.css';
+import shared from './shared.module.css';
 import styles from './Login.module.css';
 import { login as autenticar, registrar } from '../services/auth';
 import { IconCheck } from '../components/icons';

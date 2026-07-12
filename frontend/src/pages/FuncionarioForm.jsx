@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css';
+import styles from './shared.module.css';
 import { cpf as validadorCpf } from 'cpf-cnpj-validator';
 import { IconInfo, IconClose, IconCheck, IconSave, IconPlus, IconEdit, IconChevronDown } from '../components/icons';
 

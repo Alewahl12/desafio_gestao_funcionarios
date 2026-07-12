@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
-import styles from './Departamento.module.css';
+import styles from './shared.module.css';
 import { IconInfo, IconClose, IconCheck, IconSave } from '../components/icons';
 
 function DepartamentoForm() {
