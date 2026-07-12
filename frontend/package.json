@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "dependencies": {
     "axios": "^1.18.1",
@@ -28,6 +30,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "cypress": "^15.4.0",
     "eslint": "^10.6.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
@@ -35,5 +38,9 @@
     "jsdom": "^25.0.1",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "core-js@3.49.0": true,
+    "cypress@15.18.1": true
   }
 }

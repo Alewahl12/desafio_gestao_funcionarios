@@ -108,7 +108,7 @@ function CargoList() {
             <thead>
               <tr>
                 <th className={styles.editCol}>Editar</th>
-                <th>Nome</th>
+                <th>Descrição</th>
                 <th>Código</th>
               </tr>
             </thead>
