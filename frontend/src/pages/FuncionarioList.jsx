@@ -82,14 +82,30 @@ function FuncionarioList() {
     doc.setTextColor(100);
     doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
 
-    const colunas = ["Nome", "CPF", "Empresa(s)", "Cargo(s)", "Departamento(s)"];
+    const colunas = ["Nome", "CPF", "Empresa", "Matrícula", "Cargo", "Departamento"];
 
-    const linhas = listaFiltrada.map(func => {
-      const empresas = func.vinculos?.map(v => v.empresa).join(', ') || '-';
-      const cargos = func.vinculos?.map(v => v.cargo?.descricao).join(', ') || '-';
-      const deps = func.vinculos?.map(v => v.departamento?.descricao).join(', ') || '-';
+    // Uma linha por vínculo — Nome e CPF são mesclados verticalmente (rowSpan)
+    // quando o funcionário tem mais de um vínculo, assim cada empresa fica
+    // claramente pareada com seu próprio cargo/departamento/matrícula.
+    const linhas = [];
+    listaFiltrada.forEach(func => {
+      const vinculos = func.vinculos && func.vinculos.length > 0 ? func.vinculos : [null];
 
-      return [func.nome, func.cpf, empresas, cargos, deps];
+      vinculos.forEach((v, index) => {
+        const linha = [];
+
+        if (index === 0) {
+          linha.push({ content: func.nome, rowSpan: vinculos.length, styles: { valign: 'middle' } });
+          linha.push({ content: func.cpf, rowSpan: vinculos.length, styles: { valign: 'middle' } });
+        }
+
+        linha.push(v ? v.empresa : '-');
+        linha.push(v ? v.matricula : '-');
+        linha.push(v?.cargo?.descricao || '-');
+        linha.push(v?.departamento?.descricao || '-');
+
+        linhas.push(linha);
+      });
     });
 
     autoTable(doc, {
