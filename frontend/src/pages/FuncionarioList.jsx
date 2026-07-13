@@ -1,14 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import styles from './shared.module.css';
 import { IconDownload, IconPlus, IconEdit, IconChevronDown } from '../components/icons';
-import { filtrarFuncionarios } from '../utils/filtros';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const TAMANHO_PAGINA = 10;
+
 function FuncionarioList() {
   const [funcionarios, setFuncionarios] = useState([]);
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalElementos, setTotalElementos] = useState(0);
 
   // Estados dos filtros
   const [filtroNome, setFiltroNome] = useState('');
@@ -17,6 +22,13 @@ function FuncionarioList() {
   const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const [filtroCargo, setFiltroCargo] = useState('');
   const [filtroDepartamento, setFiltroDepartamento] = useState('');
+
+  // Só os campos de texto precisam de atraso — os selects já são um valor
+  // discreto, escolhido de uma vez, sem "tecla por tecla".
+  const nomeComAtraso = useDebouncedValue(filtroNome);
+  const cpfComAtraso = useDebouncedValue(filtroCpf);
+  const matriculaComAtraso = useDebouncedValue(filtroMatricula);
+  const empresaComAtraso = useDebouncedValue(filtroEmpresa);
 
   const [cargosDisponiveis, setCargosDisponiveis] = useState([]);
   const [departamentosDisponiveis, setDepartamentosDisponiveis] = useState([]);
@@ -27,87 +39,122 @@ function FuncionarioList() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    carregarDadosIniciais();
+    carregarAuxiliares();
   }, []);
 
-  const carregarDadosIniciais = async () => {
+  useEffect(() => {
+    setPagina(0);
+  }, [nomeComAtraso, cpfComAtraso, matriculaComAtraso, empresaComAtraso, filtroCargo, filtroDepartamento]);
+
+  useEffect(() => {
+    carregarFuncionarios();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagina, nomeComAtraso, cpfComAtraso, matriculaComAtraso, empresaComAtraso, filtroCargo, filtroDepartamento]);
+
+  const carregarAuxiliares = async () => {
     try {
-      const [resFunc, resCargos, resDeps] = await Promise.all([
-        api.get('/funcionarios'),
-        api.get('/cargos'),
-        api.get('/departamentos')
+      const [resCargos, resDeps] = await Promise.all([
+        api.get('/cargos', { params: { size: 10000 } }),
+        api.get('/departamentos', { params: { size: 10000 } }),
       ]);
-      setFuncionarios(resFunc.data);
-      setCargosDisponiveis(resCargos.data);
-      setDepartamentosDisponiveis(resDeps.data);
+      setCargosDisponiveis(resCargos.data.content);
+      setDepartamentosDisponiveis(resDeps.data.content);
     } catch (error) {
-      console.error("Erro ao carregar dados iniciais:", error);
+      console.error("Erro ao carregar dados auxiliares:", error);
     }
   };
 
-  // Filtro instantâneo: reage a cada alteração, sem botão de pesquisa.
-  const listaFiltrada = useMemo(() => {
-    return filtrarFuncionarios(funcionarios, {
-      filtroNome,
-      filtroCpf,
-      filtroMatricula,
-      filtroEmpresa,
-      filtroCargo,
-      filtroDepartamento,
-    });
-  }, [funcionarios, filtroNome, filtroCpf, filtroMatricula, filtroEmpresa, filtroCargo, filtroDepartamento]);
+  const montarParametrosFiltro = () => ({
+    nome: nomeComAtraso,
+    cpf: cpfComAtraso,
+    matricula: matriculaComAtraso,
+    empresa: empresaComAtraso,
+    cargoId: filtroCargo || undefined,
+    departamentoId: filtroDepartamento || undefined,
+  });
+
+  const carregarFuncionarios = async () => {
+    try {
+      const response = await api.get('/funcionarios', {
+        params: {
+          ...montarParametrosFiltro(),
+          page: pagina,
+          size: TAMANHO_PAGINA,
+        },
+      });
+      setFuncionarios(response.data.content);
+      setTotalPaginas(response.data.totalPages);
+      setTotalElementos(response.data.totalElements);
+    } catch (error) {
+      console.error("Erro ao carregar funcionários:", error);
+    }
+  };
 
   const handleVisualizarVinculos = (func) => {
     setFuncionarioSelecionado(func);
     setIsModalOpen(true);
   };
 
-  const gerarRelatorio = () => {
-    const doc = new jsPDF();
-
-    doc.setFontSize(18);
-    doc.text("Relatório de Funcionários", 14, 22);
-
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
-
-    const colunas = ["Nome", "CPF", "Empresa", "Matrícula", "Cargo", "Departamento"];
-
-    // Uma linha por vínculo — Nome e CPF são mesclados verticalmente (rowSpan)
-    // quando o funcionário tem mais de um vínculo, assim cada empresa fica
-    // claramente pareada com seu próprio cargo/departamento/matrícula.
-    const linhas = [];
-    listaFiltrada.forEach(func => {
-      const vinculos = func.vinculos && func.vinculos.length > 0 ? func.vinculos : [null];
-
-      vinculos.forEach((v, index) => {
-        const linha = [];
-
-        if (index === 0) {
-          linha.push({ content: func.nome, rowSpan: vinculos.length, styles: { valign: 'middle' } });
-          linha.push({ content: func.cpf, rowSpan: vinculos.length, styles: { valign: 'middle' } });
-        }
-
-        linha.push(v ? v.empresa : '-');
-        linha.push(v ? v.matricula : '-');
-        linha.push(v?.cargo?.descricao || '-');
-        linha.push(v?.departamento?.descricao || '-');
-
-        linhas.push(linha);
+  // Busca TODOS os funcionários que batem com o filtro atual (não só a
+  // página exibida) antes de montar o PDF.
+  const gerarRelatorio = async () => {
+    try {
+      const response = await api.get('/funcionarios', {
+        params: {
+          ...montarParametrosFiltro(),
+          page: 0,
+          size: 10000,
+        },
       });
-    });
+      const todos = response.data.content;
 
-    autoTable(doc, {
-      startY: 35,
-      head: [colunas],
-      body: linhas,
-      headStyles: { fillColor: [47, 111, 237] },
-      styles: { fontSize: 9, cellPadding: 4 },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+      const doc = new jsPDF();
 
-    doc.save("relatorio_funcionarios.pdf");
+      doc.setFontSize(18);
+      doc.text("Relatório de Funcionários", 14, 22);
+
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
+
+      const colunas = ["Nome", "CPF", "Empresa", "Matrícula", "Cargo", "Departamento"];
+
+      // Uma linha por vínculo — Nome e CPF são mesclados verticalmente (rowSpan)
+      // quando o funcionário tem mais de um vínculo.
+      const linhas = [];
+      todos.forEach(func => {
+        const vinculos = func.vinculos && func.vinculos.length > 0 ? func.vinculos : [null];
+
+        vinculos.forEach((v, index) => {
+          const linha = [];
+
+          if (index === 0) {
+            linha.push({ content: func.nome, rowSpan: vinculos.length, styles: { valign: 'middle' } });
+            linha.push({ content: func.cpf, rowSpan: vinculos.length, styles: { valign: 'middle' } });
+          }
+
+          linha.push(v ? v.empresa : '-');
+          linha.push(v ? v.matricula : '-');
+          linha.push(v?.cargo?.descricao || '-');
+          linha.push(v?.departamento?.descricao || '-');
+
+          linhas.push(linha);
+        });
+      });
+
+      autoTable(doc, {
+        startY: 35,
+        head: [colunas],
+        body: linhas,
+        headStyles: { fillColor: [47, 111, 237] },
+        styles: { fontSize: 9, cellPadding: 4 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
+
+      doc.save("relatorio_funcionarios.pdf");
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+    }
   };
 
   return (
@@ -217,8 +264,8 @@ function FuncionarioList() {
               </tr>
             </thead>
             <tbody>
-              {listaFiltrada.length > 0 ? (
-                listaFiltrada.map((func) => (
+              {funcionarios.length > 0 ? (
+                funcionarios.map((func) => (
                   <tr
                     key={func.id}
                     className={styles.clickableRow}
@@ -247,6 +294,32 @@ function FuncionarioList() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className={styles.paginationRow}>
+          <span className={styles.paginationInfo}>
+            {totalElementos} {totalElementos === 1 ? 'registro' : 'registros'}
+          </span>
+
+          <div className={styles.paginationButtons}>
+            <button
+              className={styles.btnOutline}
+              onClick={() => setPagina((p) => Math.max(p - 1, 0))}
+              disabled={pagina === 0}
+            >
+              Anterior
+            </button>
+            <span className={styles.paginationPage}>
+              Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}
+            </span>
+            <button
+              className={styles.btnOutline}
+              onClick={() => setPagina((p) => Math.min(p + 1, totalPaginas - 1))}
+              disabled={pagina >= totalPaginas - 1}
+            >
+              Próxima
+            </button>
+          </div>
         </div>
       </div>
 

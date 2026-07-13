@@ -38,11 +38,11 @@ function FuncionarioForm() {
   const carregarAuxiliares = async () => {
     try {
       const [resCargos, resDeps] = await Promise.all([
-        api.get('/cargos'),
-        api.get('/departamentos')
+        api.get('/cargos', { params: { size: 10000 } }),
+        api.get('/departamentos', { params: { size: 10000 } })
       ]);
-      setCargosDisponiveis(resCargos.data);
-      setDepartamentosDisponiveis(resDeps.data);
+      setCargosDisponiveis(resCargos.data.content);
+      setDepartamentosDisponiveis(resDeps.data.content);
     } catch (error) {
       console.error("Erro ao carregar dados auxiliares:", error);
     }

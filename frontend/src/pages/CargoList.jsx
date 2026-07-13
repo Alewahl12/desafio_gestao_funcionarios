@@ -1,65 +1,95 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import styles from './shared.module.css'; // Usando o mesmo design system
 import { IconDownload, IconPlus, IconEdit } from '../components/icons';
-import { filtrarPorDescricaoECodigo } from '../utils/filtros';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 // Importando as bibliotecas geradoras de PDF
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const TAMANHO_PAGINA = 10;
+
 function CargoList() {
   const [cargos, setCargos] = useState([]);
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalElementos, setTotalElementos] = useState(0);
+
   const [filtroDescricao, setFiltroDescricao] = useState('');
   const [filtroCodigo, setFiltroCodigo] = useState('');
+
+  const descricaoComAtraso = useDebouncedValue(filtroDescricao);
+  const codigoComAtraso = useDebouncedValue(filtroCodigo);
 
   const navigate = useNavigate();
 
   useEffect(() => {
+    setPagina(0);
+  }, [descricaoComAtraso, codigoComAtraso]);
+
+  useEffect(() => {
     carregarCargos();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagina, descricaoComAtraso, codigoComAtraso]);
 
   const carregarCargos = async () => {
     try {
-      const response = await api.get('/cargos');
-      setCargos(response.data);
+      const response = await api.get('/cargos', {
+        params: {
+          descricao: descricaoComAtraso,
+          codigo: codigoComAtraso,
+          page: pagina,
+          size: TAMANHO_PAGINA,
+        },
+      });
+      setCargos(response.data.content);
+      setTotalPaginas(response.data.totalPages);
+      setTotalElementos(response.data.totalElements);
     } catch (error) {
       console.error("Erro ao carregar cargos:", error);
     }
   };
 
-  // Filtro instantâneo: reage a cada tecla digitada, sem botão de pesquisa.
-  const listaFiltrada = useMemo(() => {
-    return filtrarPorDescricaoECodigo(cargos, filtroDescricao, filtroCodigo);
-  }, [cargos, filtroDescricao, filtroCodigo]);
+  // Função que constrói e baixa o Relatório de Cargos em PDF — busca TODOS
+  // os registros que batem com o filtro atual, não só a página exibida.
+  const gerarRelatorio = async () => {
+    try {
+      const response = await api.get('/cargos', {
+        params: {
+          descricao: descricaoComAtraso,
+          codigo: codigoComAtraso,
+          page: 0,
+          size: 10000,
+        },
+      });
+      const todos = response.data.content;
 
-  // Função que constrói e baixa o Relatório de Cargos em PDF
-  const gerarRelatorio = () => {
-    const doc = new jsPDF();
+      const doc = new jsPDF();
 
-    // Configura os Títulos
-    doc.setFontSize(18);
-    doc.text("Relatório de Cargos", 14, 22);
+      doc.setFontSize(18);
+      doc.text("Relatório de Cargos", 14, 22);
 
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
 
-    // Mapeia os dados usando a lista filtrada
-    const colunas = ["Código", "Descrição"];
-    const linhas = listaFiltrada.map(cargo => [cargo.codigo, cargo.descricao]);
+      const colunas = ["Código", "Descrição"];
+      const linhas = todos.map(cargo => [cargo.codigo, cargo.descricao]);
 
-    autoTable(doc, {
-      startY: 35,
-      head: [colunas],
-      body: linhas,
-      headStyles: { fillColor: [47, 111, 237] },
-      styles: { fontSize: 10, cellPadding: 5 },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+      autoTable(doc, {
+        startY: 35,
+        head: [colunas],
+        body: linhas,
+        headStyles: { fillColor: [47, 111, 237] },
+        styles: { fontSize: 10, cellPadding: 5 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
 
-    // Dispara o download
-    doc.save("relatorio_cargos.pdf");
+      doc.save("relatorio_cargos.pdf");
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+    }
   };
 
   return (
@@ -113,8 +143,8 @@ function CargoList() {
               </tr>
             </thead>
             <tbody>
-              {listaFiltrada.length > 0 ? (
-                listaFiltrada.map((cargo) => (
+              {cargos.length > 0 ? (
+                cargos.map((cargo) => (
                   <tr key={cargo.id}>
                     <td>
                       <button
@@ -136,6 +166,32 @@ function CargoList() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className={styles.paginationRow}>
+          <span className={styles.paginationInfo}>
+            {totalElementos} {totalElementos === 1 ? 'registro' : 'registros'}
+          </span>
+
+          <div className={styles.paginationButtons}>
+            <button
+              className={styles.btnOutline}
+              onClick={() => setPagina((p) => Math.max(p - 1, 0))}
+              disabled={pagina === 0}
+            >
+              Anterior
+            </button>
+            <span className={styles.paginationPage}>
+              Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}
+            </span>
+            <button
+              className={styles.btnOutline}
+              onClick={() => setPagina((p) => Math.min(p + 1, totalPaginas - 1))}
+              disabled={pagina >= totalPaginas - 1}
+            >
+              Próxima
+            </button>
+          </div>
         </div>
       </div>
     </div>

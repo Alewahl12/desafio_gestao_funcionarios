@@ -1,62 +1,97 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import styles from './shared.module.css';
 import { IconDownload, IconPlus, IconEdit } from '../components/icons';
-import { filtrarPorDescricaoECodigo } from '../utils/filtros';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 // Importando as bibliotecas geradoras de PDF
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const TAMANHO_PAGINA = 10;
+
 function DepartamentoList() {
   const [departamentos, setDepartamentos] = useState([]);
+  const [pagina, setPagina] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalElementos, setTotalElementos] = useState(0);
+
   const [filtroDescricao, setFiltroDescricao] = useState('');
   const [filtroCodigo, setFiltroCodigo] = useState('');
 
+  // Só dispara a busca depois que o usuário parar de digitar por um instante
+  const descricaoComAtraso = useDebouncedValue(filtroDescricao);
+  const codigoComAtraso = useDebouncedValue(filtroCodigo);
+
   const navigate = useNavigate();
+
+  // Sempre que o filtro (já com o atraso) mudar, volta pra primeira página
+  useEffect(() => {
+    setPagina(0);
+  }, [descricaoComAtraso, codigoComAtraso]);
 
   useEffect(() => {
     carregarDepartamentos();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagina, descricaoComAtraso, codigoComAtraso]);
 
   const carregarDepartamentos = async () => {
     try {
-      const response = await api.get('/departamentos');
-      setDepartamentos(response.data);
+      const response = await api.get('/departamentos', {
+        params: {
+          descricao: descricaoComAtraso,
+          codigo: codigoComAtraso,
+          page: pagina,
+          size: TAMANHO_PAGINA,
+        },
+      });
+      setDepartamentos(response.data.content);
+      setTotalPaginas(response.data.totalPages);
+      setTotalElementos(response.data.totalElements);
     } catch (error) {
       console.error("Erro ao carregar departamentos:", error);
     }
   };
 
-  // Filtro instantâneo: reage a cada tecla digitada, sem botão de pesquisa.
-  const listaFiltrada = useMemo(() => {
-    return filtrarPorDescricaoECodigo(departamentos, filtroDescricao, filtroCodigo);
-  }, [departamentos, filtroDescricao, filtroCodigo]);
+  // Função que constrói e baixa o Relatório em PDF — busca TODOS os registros
+  // que batem com o filtro atual, não só a página que está sendo exibida.
+  const gerarRelatorio = async () => {
+    try {
+      const response = await api.get('/departamentos', {
+        params: {
+          descricao: descricaoComAtraso,
+          codigo: codigoComAtraso,
+          page: 0,
+          size: 10000,
+        },
+      });
+      const todos = response.data.content;
 
-  // Função que constrói e baixa o Relatório em PDF
-  const gerarRelatorio = () => {
-    const doc = new jsPDF();
+      const doc = new jsPDF();
 
-    doc.setFontSize(18);
-    doc.text("Relatório de Departamentos", 14, 22);
+      doc.setFontSize(18);
+      doc.text("Relatório de Departamentos", 14, 22);
 
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text(`Sistema de Gestão - Emitido em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 30);
 
-    const colunas = ["Código", "Descrição"];
-    const linhas = listaFiltrada.map(dep => [dep.codigo, dep.descricao]);
+      const colunas = ["Código", "Descrição"];
+      const linhas = todos.map(dep => [dep.codigo, dep.descricao]);
 
-    autoTable(doc, {
-      startY: 35,
-      head: [colunas],
-      body: linhas,
-      headStyles: { fillColor: [47, 111, 237] },
-      styles: { fontSize: 10, cellPadding: 5 },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+      autoTable(doc, {
+        startY: 35,
+        head: [colunas],
+        body: linhas,
+        headStyles: { fillColor: [47, 111, 237] },
+        styles: { fontSize: 10, cellPadding: 5 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
 
-    doc.save("relatorio_departamentos.pdf");
+      doc.save("relatorio_departamentos.pdf");
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+    }
   };
 
   return (
@@ -110,8 +145,8 @@ function DepartamentoList() {
               </tr>
             </thead>
             <tbody>
-              {listaFiltrada.length > 0 ? (
-                listaFiltrada.map((dep) => (
+              {departamentos.length > 0 ? (
+                departamentos.map((dep) => (
                   <tr key={dep.id}>
                     <td>
                       <button
@@ -133,6 +168,32 @@ function DepartamentoList() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className={styles.paginationRow}>
+          <span className={styles.paginationInfo}>
+            {totalElementos} {totalElementos === 1 ? 'registro' : 'registros'}
+          </span>
+
+          <div className={styles.paginationButtons}>
+            <button
+              className={styles.btnOutline}
+              onClick={() => setPagina((p) => Math.max(p - 1, 0))}
+              disabled={pagina === 0}
+            >
+              Anterior
+            </button>
+            <span className={styles.paginationPage}>
+              Página {totalPaginas === 0 ? 0 : pagina + 1} de {totalPaginas}
+            </span>
+            <button
+              className={styles.btnOutline}
+              onClick={() => setPagina((p) => Math.min(p + 1, totalPaginas - 1))}
+              disabled={pagina >= totalPaginas - 1}
+            >
+              Próxima
+            </button>
+          </div>
         </div>
       </div>
     </div>
