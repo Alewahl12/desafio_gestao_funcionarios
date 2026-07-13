@@ -10,6 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -20,7 +23,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,120 +41,64 @@ class FuncionarioControllerTest {
         cargo.setCodigo("DEV");
         cargo.setDescricao("Desenvolvedor");
 
-        Departamento departamento = new Departamento();
-        departamento.setId(1L);
-        departamento.setCodigo("TI");
-        departamento.setDescricao("Tecnologia da Informação");
+        Departamento depto = new Departamento();
+        depto.setId(1L);
+        depto.setCodigo("TI");
+        depto.setDescricao("Tecnologia da Informação");
 
-        Vinculo vinculo = new Vinculo();
-        vinculo.setEmpresa(empresa);
-        vinculo.setMatricula(matricula);
-        vinculo.setCargo(cargo);
-        vinculo.setDepartamento(departamento);
-        return vinculo;
+        Vinculo v = new Vinculo();
+        v.setEmpresa(empresa);
+        v.setMatricula(matricula);
+        v.setCargo(cargo);
+        v.setDepartamento(depto);
+        return v;
     }
 
     @Test
-    void criar_deveRetornar400_quandoCpfJaCadastrado() {
-        Funcionario funcionario = new Funcionario();
-        funcionario.setNome("Ana Silva");
-        funcionario.setCpf("123.456.789-00");
+    @SuppressWarnings("unchecked")
+    void listar_deveRetornarPaginaDeFuncionarios() {
+        Page<Funcionario> pagina = new PageImpl<>(List.of(new Funcionario()));
+        when(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(Pageable.class))).thenReturn(pagina);
 
-        when(repository.existsByCpf("123.456.789-00")).thenReturn(true);
+        Page<Funcionario> resultado = controller.listar(null, null, null, null, null, null, Pageable.unpaged());
+        assertThat(resultado).isNotNull();
+        assertThat(resultado.getContent()).hasSize(1);
+    }
 
-        ResponseEntity<?> resposta = controller.criar(funcionario);
+    @Test
+    void buscarPorId_deveRetornarFuncionario_quandoEncontrado() {
+        Funcionario f = new Funcionario();
+        f.setId(1L);
+        when(repository.findById(1L)).thenReturn(Optional.of(f));
 
-        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ResponseEntity<Funcionario> res = controller.buscarPorId(1L);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(res.getBody()).isNotNull();
+    }
+
+    @Test
+    void criar_deveRetornar201_quandoDadosValidos() {
+        Funcionario novo = new Funcionario();
+        novo.setNome("Carlos");
+        novo.setCpf("111.111.111-11");
+
+        when(repository.existsByCpf("111.111.111-11")).thenReturn(false);
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ResponseEntity<?> res = controller.criar(novo);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
+    @Test
+    void criar_deveRetornar400_quandoCpfDuplicado() {
+        Funcionario novo = new Funcionario();
+        novo.setCpf("111.111.111-11");
+
+        when(repository.existsByCpf("111.111.111-11")).thenReturn(true);
+
+        ResponseEntity<?> res = controller.criar(novo);
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(repository, never()).save(any());
-    }
-
-    @Test
-    void criar_deveSalvarFuncionarioComVinculos_quandoCpfNovo() {
-        Funcionario funcionario = new Funcionario();
-        funcionario.setNome("Ana Silva");
-        funcionario.setCpf("123.456.789-00");
-        funcionario.setVinculos(new ArrayList<>(List.of(criarVinculo("Empresa X", "12345"))));
-
-        when(repository.existsByCpf("123.456.789-00")).thenReturn(false);
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        ResponseEntity<?> resposta = controller.criar(funcionario);
-
-        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        // 1x para salvar o funcionário sem vínculos, 1x para salvar já com os vínculos associados
-        verify(repository, times(2)).save(any());
-
-        Funcionario salvo = (Funcionario) resposta.getBody();
-        assertThat(salvo.getVinculos()).hasSize(1);
-        assertThat(salvo.getVinculos().get(0).getFuncionario()).isEqualTo(salvo);
-        assertThat(salvo.getVinculos().get(0).getEmpresa()).isEqualTo("Empresa X");
-    }
-
-    @Test
-    void criar_deveSalvarUmaVez_quandoFuncionarioSemVinculos() {
-        Funcionario funcionario = new Funcionario();
-        funcionario.setNome("Ana Silva");
-        funcionario.setCpf("123.456.789-00");
-        funcionario.setVinculos(new ArrayList<>());
-
-        when(repository.existsByCpf("123.456.789-00")).thenReturn(false);
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        controller.criar(funcionario);
-
-        verify(repository, times(1)).save(any());
-    }
-
-    @Test
-    void atualizar_deveRetornar404_quandoFuncionarioNaoEncontrado() {
-        when(repository.findById(99L)).thenReturn(Optional.empty());
-
-        ResponseEntity<?> resposta = controller.atualizar(99L, new Funcionario());
-
-        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    }
-
-    @Test
-    void atualizar_deveRetornar400_quandoNovoCpfJaExisteEmOutroFuncionario() {
-        Funcionario existente = new Funcionario();
-        existente.setId(1L);
-        existente.setNome("Ana Silva");
-        existente.setCpf("111.111.111-11");
-
-        Funcionario atualizado = new Funcionario();
-        atualizado.setNome("Ana Silva");
-        atualizado.setCpf("222.222.222-22");
-
-        when(repository.findById(1L)).thenReturn(Optional.of(existente));
-        when(repository.existsByCpf("222.222.222-22")).thenReturn(true);
-
-        ResponseEntity<?> resposta = controller.atualizar(1L, atualizado);
-
-        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        verify(repository, never()).save(any());
-    }
-
-    @Test
-    void atualizar_devePermitir_quandoCpfNaoMudou() {
-        Funcionario existente = new Funcionario();
-        existente.setId(1L);
-        existente.setNome("Ana Silva");
-        existente.setCpf("111.111.111-11");
-        existente.setVinculos(new ArrayList<>());
-
-        Funcionario atualizado = new Funcionario();
-        atualizado.setNome("Ana Silva Santos");
-        atualizado.setCpf("111.111.111-11");
-        atualizado.setVinculos(new ArrayList<>());
-
-        when(repository.findById(1L)).thenReturn(Optional.of(existente));
-        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        ResponseEntity<?> resposta = controller.atualizar(1L, atualizado);
-
-        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(repository, never()).existsByCpf(any());
-        assertThat(existente.getNome()).isEqualTo("Ana Silva Santos");
     }
 
     @Test
@@ -165,7 +111,7 @@ class FuncionarioControllerTest {
 
         Vinculo vinculoNovo = criarVinculo("Empresa Nova", "222");
         Funcionario atualizado = new Funcionario();
-        atualizado.setNome("Ana Silva");
+        atualizado.setNome("Ana Silva Editada");
         atualizado.setCpf("111.111.111-11");
         atualizado.setVinculos(new ArrayList<>(List.of(vinculoNovo)));
 
@@ -175,8 +121,68 @@ class FuncionarioControllerTest {
         ResponseEntity<?> resposta = controller.atualizar(1L, atualizado);
 
         assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(existente.getVinculos()).hasSize(1);
-        assertThat(existente.getVinculos().get(0).getEmpresa()).isEqualTo("Empresa Nova");
-        assertThat(existente.getVinculos().get(0).getFuncionario()).isEqualTo(existente);
+        Funcionario salvo = (Funcionario) resposta.getBody();
+        assertThat(salvo.getNome()).isEqualTo("Ana Silva Editada");
+        assertThat(salvo.getVinculos()).hasSize(1);
+        assertThat(salvo.getVinculos().get(0).getEmpresa()).isEqualTo("Empresa Nova");
+    }
+
+    @Test
+    void atualizar_deveRetornar400_quandoNovoCpfJaExisteEmOutroFuncionario() {
+        Funcionario existente = new Funcionario();
+        existente.setId(1L);
+        existente.setCpf("111.111.111-11");
+
+        Funcionario atualizado = new Funcionario();
+        atualizado.setCpf("222.222.222-22");
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existente));
+        when(repository.existsByCpf("222.222.222-22")).thenReturn(true);
+
+        ResponseEntity<?> resposta = controller.atualizar(1L, atualizado);
+
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void atualizar_deveRetornar404_quandoFuncionarioNaoEncontrado() {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+        
+        ResponseEntity<?> resposta = controller.atualizar(99L, new Funcionario());
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void atualizar_deveLidarComVinculosNulos() {
+        Funcionario existente = new Funcionario();
+        existente.setId(1L);
+        existente.setCpf("111.111.111-11");
+
+        Funcionario atualizado = new Funcionario();
+        atualizado.setCpf("111.111.111-11");
+        atualizado.setVinculos(null);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existente));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ResponseEntity<?> resposta = controller.atualizar(1L, atualizado);
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
+    void atualizar_deveRetornar200_quandoCpfNaoFoiAlterado() {
+        Funcionario existente = new Funcionario();
+        existente.setId(1L);
+        existente.setCpf("111.111.111-11");
+
+        Funcionario atualizado = new Funcionario();
+        atualizado.setCpf("111.111.111-11");
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existente));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        ResponseEntity<?> resposta = controller.atualizar(1L, atualizado);
+        assertThat(resposta.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }

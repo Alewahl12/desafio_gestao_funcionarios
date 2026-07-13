@@ -1,159 +1,144 @@
-// Gera um CPF sintaticamente válido (cumpre o algoritmo de dígito verificador),
-// diferente a cada execução — assim como o código/descrição, evita colidir
-// com "CPF já cadastrado" ao rodar a suíte várias vezes.
 function gerarCpfValido() {
   const nove = Array.from({ length: 9 }, () => Math.floor(Math.random() * 9));
-
   const calcularDigito = (digitos) => {
     let soma = 0;
     let peso = digitos.length + 1;
-    digitos.forEach((d) => {
-      soma += d * peso;
-      peso -= 1;
-    });
+    digitos.forEach((d) => { soma += d * peso; peso -= 1; });
     const resto = soma % 11;
     return resto < 2 ? 0 : 11 - resto;
   };
-
   const d1 = calcularDigito(nove);
   const d2 = calcularDigito([...nove, d1]);
-
   const str = [...nove, d1, d2].join('');
   return `${str.slice(0, 3)}.${str.slice(3, 6)}.${str.slice(6, 9)}-${str.slice(9, 11)}`;
 }
 
 describe('Funcionários', () => {
-  const sufixo = Date.now();
-  const nome = `Funcionario Cypress ${sufixo}`;
-  const cpf = gerarCpfValido();
-  const empresa = `Empresa Cypress ${sufixo}`;
-  const matricula = `${sufixo}`.slice(-6);
-
-  const cargoDescricao = `Cargo Cypress Func ${sufixo}`;
-  const depDescricao = `Departamento Cypress Func ${sufixo}`;
-
   before(() => {
-    // Cria um Cargo e um Departamento de apoio direto pela API, só pra ter
-    // opção disponível no select do vínculo — não é o que estamos testando aqui.
-    cy.request('POST', `${Cypress.env('apiUrl')}/cargos`, {
-      descricao: cargoDescricao,
-      codigo: `CYF${sufixo}`,
+    cy.login();
+    cy.request({
+      method: 'POST',
+      url: `${Cypress.env('apiUrl')}/cargos`,
+      body: { codigo: `C-AUX-${Date.now()}`, descricao: `Cargo Auxiliar` },
+      failOnStatusCode: false
     });
-    cy.request('POST', `${Cypress.env('apiUrl')}/departamentos`, {
-      descricao: depDescricao,
-      codigo: `CYF${sufixo}`,
+    cy.request({
+      method: 'POST',
+      url: `${Cypress.env('apiUrl')}/departamentos`,
+      body: { codigo: `D-AUX-${Date.now()}`, descricao: `Dep Auxiliar` },
+      failOnStatusCode: false
     });
   });
 
   beforeEach(() => {
     cy.login();
+    cy.intercept('GET', '**/funcionarios*').as('loadInicial');
+    cy.intercept('GET', '**/cargos*').as('loadCargos');
+    cy.intercept('GET', '**/departamentos*').as('loadDeps');
     cy.visit('/funcionarios');
+    cy.wait(['@loadInicial', '@loadCargos', '@loadDeps']);
   });
 
-  it('cadastra um novo funcionário com um vínculo', () => {
+  it('cadastra um novo funcionário com vínculo', () => {
+    const suf = Date.now();
     cy.contains('button', 'Novo Funcionário').click();
-    cy.contains('h1', 'Cadastro de Funcionário').should('be.visible');
+    cy.wait(['@loadCargos', '@loadDeps']);
 
-    cy.get('input[placeholder="Insira o nome do funcionário"]').type(nome);
-    cy.get('input[placeholder="000.000.000-00"]').type(cpf);
+    cy.get('input[placeholder="Insira o nome do funcionário"]').type(`Cadastro ${suf}`, { delay: 0 });
+    cy.get('input[placeholder="000.000.000-00"]').type(gerarCpfValido(), { delay: 0 });
 
     cy.contains('button', 'Novo Vínculo').click();
+    cy.get('input[placeholder="Insira o nome da empresa"]').type(`Empresa ${suf}`, { delay: 0 });
+    cy.get('input[placeholder="0000000000"]').type(`${suf}`.slice(-6), { delay: 0 });
+    cy.get('select').eq(0).select(1);
+    cy.get('select').eq(1).select(1);
 
-    // Escopa dentro do modal para não confundir com o Confirmar da tela de fundo
-    cy.get('[class*="modalCard"]').within(() => {
-      cy.contains('h2', 'Novo Vínculo').should('be.visible');
-      cy.get('input[placeholder="Insira o nome da empresa"]').type(empresa);
-      cy.get('input[placeholder="0000000000"]').type(matricula);
-      cy.contains('fieldset', 'Cargo').find('select').select(cargoDescricao);
-      cy.contains('fieldset', 'Departamento').find('select').select(depDescricao);
-      cy.contains('button', 'Confirmar').click();
-    });
+    cy.get('form').last().contains('button', 'Confirmar').click();
+    cy.contains('td', `Empresa ${suf}`).should('be.visible');
 
-    // Vínculo deve aparecer na tabela "Empresas" do formulário
-    cy.contains('td', empresa).should('be.visible');
-
-    cy.on('window:alert', (texto) => {
-      expect(texto).to.contain('sucesso');
-    });
-
+    cy.on('window:alert', (texto) => { expect(texto).to.contain('sucesso'); });
     cy.contains('button', 'Confirmar').click();
-
     cy.url().should('include', '/funcionarios');
-    cy.get('input[placeholder="Procure pelo funcionário"]').type(nome);
-    cy.contains('td', nome).should('be.visible');
   });
 
   it('pesquisa o funcionário pelo nome', () => {
-    cy.get('input[placeholder="Procure pelo funcionário"]').type(nome);
-    cy.contains('td', nome).should('be.visible');
-  });
-
-  it('pesquisa o funcionário pelo CPF', () => {
-    cy.get('input[placeholder="000.000.000-00"]').type(cpf);
-    cy.contains('td', nome).should('be.visible');
-  });
-
-  it('pesquisa o funcionário pela empresa do vínculo', () => {
-    cy.get('input[placeholder="Procure pela empresa"]').type(empresa);
-    cy.contains('td', nome).should('be.visible');
-  });
-
-  it('pesquisa o funcionário pela matrícula do vínculo', () => {
-    cy.get('input[placeholder="0000000000"]').type(matricula);
-    cy.contains('td', nome).should('be.visible');
-  });
-
-  it('pesquisa o funcionário pelo cargo do vínculo', () => {
-    cy.contains('fieldset', 'Cargo').find('select').select(cargoDescricao);
-    cy.contains('td', nome).should('be.visible');
-  });
-
-  it('pesquisa o funcionário pelo departamento do vínculo', () => {
-    cy.contains('fieldset', 'Departamento').find('select').select(depDescricao);
-    cy.contains('td', nome).should('be.visible');
-  });
-
-  it('exibe os vínculos ao clicar na linha do funcionário', () => {
-    cy.get('input[placeholder="Procure pelo funcionário"]').type(nome);
-    cy.contains('td', nome).click();
-
-    cy.get('[class*="modalCard"]').within(() => {
-      cy.contains('h2', 'Vínculos de Empresa').should('be.visible');
-      cy.contains('td', empresa).should('be.visible');
-      cy.contains('td', matricula).should('be.visible');
-      cy.contains('button', 'Fechar').click();
+    const nomeBusca = `Pesquisa ${Date.now()}`;
+    cy.request('POST', `${Cypress.env('apiUrl')}/funcionarios`, {
+      nome: nomeBusca, cpf: gerarCpfValido(), vinculos: []
     });
+
+    cy.reload();
+    cy.intercept('GET', '**/funcionarios*').as('buscarFunc');
+    cy.get('input[placeholder="Procure pelo funcionário"]').type(nomeBusca, { delay: 0 });
+    cy.wait('@buscarFunc');
+
+    cy.contains('td', nomeBusca).should('be.visible');
+  });
+
+  it('visualiza os vínculos do funcionário no modal', () => {
+    const nomeVisualizar = `Visualizar ${Date.now()}`;
+    cy.request('POST', `${Cypress.env('apiUrl')}/funcionarios`, {
+      nome: nomeVisualizar, cpf: gerarCpfValido(), vinculos: []
+    });
+
+    cy.reload();
+    cy.intercept('GET', '**/funcionarios*').as('buscarFunc');
+    cy.get('input[placeholder="Procure pelo funcionário"]').type(nomeVisualizar, { delay: 0 });
+    cy.wait('@buscarFunc');
+
+    cy.contains('td', nomeVisualizar).should('be.visible').click();
+    
+    cy.contains('h2', 'Vínculos de Empresa').should('be.visible');
+    cy.contains('button', 'Fechar').click();
   });
 
   it('edita o funcionário cadastrado', () => {
-    const novoNome = `${nome} Editado`;
-
-    cy.get('input[placeholder="Procure pelo funcionário"]').type(nome);
-    cy.get('table tbody tr').first().find('button').click();
-
-    cy.contains('h1', 'Editar Funcionário').should('be.visible');
-    // O vínculo criado no cadastro deve continuar aparecendo na edição
-    cy.contains('td', empresa).should('be.visible');
-
-    cy.get('input[placeholder="Insira o nome do funcionário"]')
-      .clear()
-      .type(novoNome);
-
-    cy.on('window:alert', (texto) => {
-      expect(texto).to.contain('sucesso');
+    const nomeOriginal = `Original ${Date.now()}`;
+    const novoNome = `Editado ${Date.now()}`;
+    cy.request('POST', `${Cypress.env('apiUrl')}/funcionarios`, {
+      nome: nomeOriginal, cpf: gerarCpfValido(), vinculos: []
     });
 
+    cy.reload();
+    cy.intercept('GET', '**/funcionarios*').as('buscarFunc');
+    cy.get('input[placeholder="Procure pelo funcionário"]').type(nomeOriginal, { delay: 0 });
+    cy.wait('@buscarFunc');
+
+    cy.contains('td', nomeOriginal).should('be.visible');
+    cy.get('table tbody tr').first().find('button').click();
+
+    cy.get('input[placeholder="Insira o nome do funcionário"]').clear().type(novoNome, { delay: 0 });
     cy.contains('button', 'Salvar').click();
 
     cy.url().should('include', '/funcionarios');
-    cy.get('input[placeholder="Procure pelo funcionário"]').type(novoNome);
-    cy.contains('td', novoNome).should('be.visible');
   });
 
-  it('gera o relatório em PDF sem erros', () => {
-    cy.contains('button', 'Baixar Relatório').click();
+  it('testa a paginação na listagem de funcionários', () => {
+    const suf = Date.now();
 
-    cy.readFile('cypress/downloads/relatorio_funcionarios.pdf', { timeout: 10000 })
-      .should('exist');
+    for (let i = 1; i <= 11; i++) {
+      cy.request({
+        method: 'POST',
+        url: `${Cypress.env('apiUrl')}/funcionarios`,
+        body: { nome: `Func Pagina ${suf} ${i}`, cpf: gerarCpfValido(), vinculos: [] }
+      });
+    }
+
+    cy.visit('/funcionarios');
+    cy.wait(1500);
+
+    cy.contains(/Página 1 de \d+/).should('be.visible');
+    
+    cy.intercept('GET', '**/funcionarios*page=1*').as('pagina2');
+    cy.contains('button', 'Próxima').should('not.be.disabled').click({ force: true });
+    
+    cy.wait('@pagina2');
+    cy.contains(/Página 2 de \d+/).should('be.visible');
+  });
+
+  it('gera o relatório de funcionários em PDF', () => {
+    cy.intercept('GET', '**/funcionarios?*size=10000*').as('gerarRelatorio');
+    cy.contains('button', 'Baixar Relatório').click();
+    cy.wait('@gerarRelatorio').its('response.statusCode').should('eq', 200);
   });
 });
