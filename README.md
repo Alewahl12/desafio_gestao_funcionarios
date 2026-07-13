@@ -99,7 +99,7 @@ Antes de começar, instale na sua máquina:
 | Ferramenta | Versão recomendada | Link para download |
 |---|---|---|
 | Git | qualquer versão recente | https://git-scm.com/downloads |
-| JDK (Java) | 21 ou superior | https://adoptium.net/ |
+| JDK (Java) | 21 ou superior | https://www.oracle.com/br/java/technologies/downloads/ |
 | Maven | qualquer versão recente | https://maven.apache.org/download.cgi |
 | Node.js (inclui o npm) | 20 ou superior | https://nodejs.org/ |
 | Docker Desktop | qualquer versão recente | https://www.docker.com/products/docker-desktop/ |
@@ -122,7 +122,7 @@ Cada comando deve responder com um número de versão, sem erro.
 Clone o repositório e entre na pasta criada:
 
 ```
-git clone <URL_DO_REPOSITORIO>
+git clone https://github.com/Alewahl12/desafio_gestao_funcionarios
 cd desafio-gestao-funcionarios
 ```
 
