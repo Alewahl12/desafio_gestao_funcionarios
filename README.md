@@ -109,7 +109,7 @@ Para confirmar que tudo foi instalado corretamente, abra um terminal e rode:
 ```
 git --version
 java -version
-mvn -version
+mvn -version ou .\mvnw -version (no backend caso não tenha configurado a variavel de ambiente)
 node -version
 npm -version
 docker --version
@@ -125,8 +125,6 @@ Clone o repositório e entre na pasta criada:
 git clone https://github.com/Alewahl12/desafio_gestao_funcionarios
 cd desafio-gestao-funcionarios
 ```
-
-Substitua `<URL_DO_REPOSITORIO>` pelo endereço real do repositório Git do projeto.
 
 ## Subindo o banco de dados
 
@@ -167,7 +165,7 @@ docker compose down
 Com o banco de dados no ar, entre na pasta `backend/` (se ainda não estiver nela) e rode:
 
 ```
-mvn spring-boot:run
+mvn spring-boot:run ou .\mvnw spring-boot:run
 ```
 
 O backend vai iniciar e ficar disponível em `http://localhost:8080`. Deixe esse terminal aberto enquanto estiver usando o sistema.
@@ -235,7 +233,7 @@ O projeto tem testes automatizados tanto no backend quanto no frontend, cobrindo
 Os testes cobrem, entre outras coisas: validação de código e CPF duplicado, criação e edição de vínculos, filtros de pesquisa e paginação. Para rodar todos os testes do backend, na pasta `backend/`:
 
 ```
-mvn test
+mvn test ou ./mvnw test
 ```
 
 Os testes de repositório usam um banco H2 em memória, criado e destruído automaticamente a cada execução — não é necessário ter o Docker rodando para rodar os testes.
@@ -243,7 +241,7 @@ Os testes de repositório usam um banco H2 em memória, criado e destruído auto
 Para gerar o relatório de cobertura de testes (JaCoCo), rode:
 
 ```
-mvn test
+mvn test ou ./mvnw test
 ```
 
 O relatório é gerado automaticamente em `backend/target/site/jacoco/index.html`. Abra esse arquivo no navegador para ver a cobertura detalhada por classe, incluindo linhas e branches (condicionais) cobertos.
