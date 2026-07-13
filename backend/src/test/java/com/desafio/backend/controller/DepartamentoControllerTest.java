@@ -7,6 +7,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -60,12 +63,14 @@ class DepartamentoControllerTest {
 
     @Test
     void listar_deveRetornarTodosDepartamentos_quandoFiltrosVazios() {
-        when(repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase("", ""))
-                .thenReturn(List.of(new Departamento(), new Departamento()));
+        Page<Departamento> pagina = new PageImpl<>(List.of(new Departamento(), new Departamento()));
+        when(repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(
+                any(), any(), any(Pageable.class)))
+                .thenReturn(pagina);
 
-        List<Departamento> resultado = controller.listar("", "");
+        Page<Departamento> resultado = controller.listar("", "", Pageable.unpaged());
 
-        assertThat(resultado).hasSize(2);
+        assertThat(resultado.getContent()).hasSize(2);
     }
 
     @Test

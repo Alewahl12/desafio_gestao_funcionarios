@@ -4,8 +4,10 @@ import com.desafio.backend.entity.Departamento;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,16 +55,43 @@ class DepartamentoRepositoryTest {
         rh.setDescricao("Recursos Humanos");
         repository.save(rh);
 
-        List<Departamento> resultado = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase("", "ti");
+        Page<Departamento> pagina = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(
+                "", "ti", Pageable.unpaged());
 
-        assertThat(resultado).hasSize(1);
-        assertThat(resultado.get(0).getCodigo()).isEqualTo("TI");
+        assertThat(pagina.getContent()).hasSize(1);
+        assertThat(pagina.getContent().get(0).getCodigo()).isEqualTo("TI");
     }
 
     @Test
     void findByDescricaoECodigo_deveRetornarVazio_quandoNadaCorresponde() {
-        List<Departamento> resultado = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase("inexistente", "");
+        Page<Departamento> pagina = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(
+                "inexistente", "", Pageable.unpaged());
 
-        assertThat(resultado).isEmpty();
+        assertThat(pagina.getContent()).isEmpty();
+    }
+
+    @Test
+    void findByDescricaoECodigo_deveDividirResultadosEmPaginas() {
+        for (int i = 1; i <= 3; i++) {
+            Departamento departamento = new Departamento();
+            departamento.setCodigo("DP" + i);
+            departamento.setDescricao("Departamento " + i);
+            repository.save(departamento);
+        }
+
+        Pageable primeiraPagina = PageRequest.of(0, 2, Sort.by("descricao"));
+        Page<Departamento> pagina1 = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(
+                "", "", primeiraPagina);
+
+        assertThat(pagina1.getContent()).hasSize(2);
+        assertThat(pagina1.getTotalElements()).isEqualTo(3);
+        assertThat(pagina1.getTotalPages()).isEqualTo(2);
+        assertThat(pagina1.hasNext()).isTrue();
+
+        Page<Departamento> pagina2 = repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(
+                "", "", primeiraPagina.next());
+
+        assertThat(pagina2.getContent()).hasSize(1);
+        assertThat(pagina2.hasNext()).isFalse();
     }
 }

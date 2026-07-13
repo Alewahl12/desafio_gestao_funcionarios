@@ -5,6 +5,9 @@ import com.desafio.backend.entity.Vinculo;
 import com.desafio.backend.repository.FuncionarioRepository;
 import com.desafio.backend.specification.FuncionarioSpecification;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,19 +22,21 @@ public class FuncionarioController {
     @Autowired
     private FuncionarioRepository repository;
 
-    // Todos os parâmetros são opcionais — sem nenhum, retorna tudo (mesmo
-    // comportamento de antes). Nome/CPF filtram o próprio funcionário;
-    // matricula/empresa/cargoId/departamentoId filtram pelos vínculos.
+    // Todos os parâmetros são opcionais — sem nenhum, retorna a página 0 com
+    // tudo. Nome/CPF filtram o próprio funcionário; matricula/empresa/cargoId/
+    // departamentoId filtram pelos vínculos.
     @GetMapping
-    public List<Funcionario> listar(
+    public Page<Funcionario> listar(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) String cpf,
             @RequestParam(required = false) String matricula,
             @RequestParam(required = false) String empresa,
             @RequestParam(required = false) Long cargoId,
-            @RequestParam(required = false) Long departamentoId) {
+            @RequestParam(required = false) Long departamentoId,
+            @PageableDefault(size = 10, sort = "nome") Pageable pageable) {
         return repository.findAll(
-                FuncionarioSpecification.comFiltros(nome, cpf, matricula, empresa, cargoId, departamentoId)
+                FuncionarioSpecification.comFiltros(nome, cpf, matricula, empresa, cargoId, departamentoId),
+                pageable
         );
     }
 

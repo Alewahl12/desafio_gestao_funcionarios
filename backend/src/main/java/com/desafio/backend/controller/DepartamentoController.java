@@ -3,11 +3,12 @@ package com.desafio.backend.controller;
 import com.desafio.backend.entity.Departamento;
 import com.desafio.backend.repository.DepartamentoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/departamentos")
@@ -30,12 +31,14 @@ public class DepartamentoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
     }
 
-    // Aceita ?descricao=X&codigo=Y opcionais — sem eles, retorna tudo.
+    // Aceita ?descricao=X&codigo=Y opcionais, mais paginação/ordenação padrão
+    // do Spring (?page=0&size=10&sort=descricao,asc).
     @GetMapping
-    public List<Departamento> listar(
+    public Page<Departamento> listar(
             @RequestParam(required = false, defaultValue = "") String descricao,
-            @RequestParam(required = false, defaultValue = "") String codigo) {
-        return repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(descricao, codigo);
+            @RequestParam(required = false, defaultValue = "") String codigo,
+            @PageableDefault(size = 10, sort = "descricao") Pageable pageable) {
+        return repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(descricao, codigo, pageable);
     }
 
     // Rota para BUSCAR um departamento por ID (Preenche os dados na tela de edição)

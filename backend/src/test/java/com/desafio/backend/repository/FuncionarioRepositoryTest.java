@@ -8,6 +8,10 @@ import com.desafio.backend.specification.FuncionarioSpecification;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -138,6 +142,31 @@ class FuncionarioRepositoryTest {
                 FuncionarioSpecification.comFiltros(null, null, null, null, null, null));
 
         assertThat(resultado).hasSize(2);
+    }
+
+    @Test
+    void comFiltros_deveDividirResultadosEmPaginas() {
+        for (int i = 1; i <= 3; i++) {
+            Funcionario funcionario = new Funcionario();
+            funcionario.setNome("Funcionario " + i);
+            funcionario.setCpf("11111111" + i + "-1" + i);
+            repository.save(funcionario);
+        }
+
+        Pageable primeiraPagina = PageRequest.of(0, 2, Sort.by("nome"));
+        Page<Funcionario> pagina1 = repository.findAll(
+                FuncionarioSpecification.comFiltros(null, null, null, null, null, null), primeiraPagina);
+
+        assertThat(pagina1.getContent()).hasSize(2);
+        assertThat(pagina1.getTotalElements()).isEqualTo(3);
+        assertThat(pagina1.getTotalPages()).isEqualTo(2);
+        assertThat(pagina1.hasNext()).isTrue();
+
+        Page<Funcionario> pagina2 = repository.findAll(
+                FuncionarioSpecification.comFiltros(null, null, null, null, null, null), primeiraPagina.next());
+
+        assertThat(pagina2.getContent()).hasSize(1);
+        assertThat(pagina2.hasNext()).isFalse();
     }
 
     private Cargo criarCargo(String codigo, String descricao) {

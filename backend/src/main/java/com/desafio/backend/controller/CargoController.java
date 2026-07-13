@@ -3,11 +3,12 @@ package com.desafio.backend.controller;
 import com.desafio.backend.entity.Cargo;
 import com.desafio.backend.repository.CargoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/cargos")
@@ -29,15 +30,15 @@ public class CargoController {
         return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
     }
 
-    // Aceita ?descricao=X&codigo=Y opcionais — sem eles, retorna tudo (mesmo
-    // comportamento de antes). O frontend ainda não usa isso; a lógica de
-    // filtro por enquanto continua no cliente e será trocada junto com a
-    // implementação de paginação.
+    // Aceita ?descricao=X&codigo=Y opcionais, mais paginação/ordenação padrão
+    // do Spring (?page=0&size=10&sort=descricao,asc). Sem nenhum parâmetro,
+    // devolve a página 0 com 10 itens ordenados por descrição.
     @GetMapping
-    public List<Cargo> listar(
+    public Page<Cargo> listar(
             @RequestParam(required = false, defaultValue = "") String descricao,
-            @RequestParam(required = false, defaultValue = "") String codigo) {
-        return repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(descricao, codigo);
+            @RequestParam(required = false, defaultValue = "") String codigo,
+            @PageableDefault(size = 10, sort = "descricao") Pageable pageable) {
+        return repository.findByDescricaoContainingIgnoreCaseAndCodigoContainingIgnoreCase(descricao, codigo, pageable);
     }
 
     // Rota para BUSCAR um cargo por ID (Preenche os dados na tela de edição)
